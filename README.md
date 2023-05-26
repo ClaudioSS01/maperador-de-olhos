@@ -1,5 +1,5 @@
 # maperador-de-olhos
-<h1><a href="https://claudioss01.github.io/maperador-de-olhos/">Mapeador de Olhos</a></h1>
+<h1><a href="https://claudioss01.github.io/maperador-de-olhos/" target="_blank">Mapeador de Olhos</a></h1>
 
 <p>O projeto "Mapeador de Olhos" é uma aplicação que utiliza técnicas de processamento de imagens e detecção de olhar para identificar a direção para a qual uma pessoa está olhando. Através da câmera do dispositivo, o código captura o vídeo em tempo real e realiza a detecção da direção do olhar com base em imagens de referência previamente treinadas.</p>
 
