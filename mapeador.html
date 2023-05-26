@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Detecção de Olhar</title>
+  <style>
+    #videoElement, #canvasElement {
+      width: 100%;
+      height: auto;
+      display: none;
+    }
+
+    button {
+      background-color: #4CAF50;
+      border: none;
+      color: white;
+      padding: 15px 32px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <center>
+    <h1>Mapeador de olhos</h1>
+    <br>
+    <div id="resultado"></div>
+  </center>
+  <br>
+  <br>
+  <div id="buttonsContainer"></div>
+
+  <video id="videoElement" autoplay></video>
+  <canvas id="canvasElement"></canvas>
+
+  <script>
+    const videoElement = document.getElementById('videoElement');
+    const canvasElement = document.getElementById('canvasElement');
+    const context = canvasElement.getContext('2d');
+    const canvasWidth = canvasElement.width;
+    const canvasHeight = canvasElement.height;
+    const referenceImages = {};
+
+    const directions = [
+      { name: 'Olhar para Cima', id: 'cima' },
+      { name: 'Olhar para Baixo', id: 'baixo' },
+      { name: 'Olhar para a Esquerda', id: 'esquerda' },
+      { name: 'Olhar para a Direita', id: 'direita' },
+      { name: 'Olho Aberto', id: 'aberto' },
+      { name: 'Olho Fechado', id: 'fechado' }
+    ];
+
+    // Cria os botões dinamicamente
+    const buttonsContainer = document.getElementById('buttonsContainer');
+    directions.forEach(direction => {
+      const button = document.createElement('button');
+      button.innerText = direction.name;
+      button.addEventListener('click', function() {
+        captureAndProcessImage(direction.id);
+      });
+      buttonsContainer.appendChild(button);
+    });
+
+    // Função para capturar a imagem atual da câmera e converter em escala de cinza
+    function captureAndProcessImage(direction) {
+      // Captura o frame atual do vídeo
+      context.drawImage(videoElement, 0, 0, canvasWidth, canvasHeight);
+      const imageData = context.getImageData(0, 0, canvasWidth, canvasHeight);
+
+      // Converter em escala de cinza
+      const grayscaleData = convertToGrayscale(imageData);
+
+      // Salva os dados da imagem processada para a direção escolhida
+      referenceImages[direction] = grayscaleData;
+      document.getElementById('resultado').innerText = 'Treinamento concluído para ' + direction;
+    }
+
+    // Função para a detecção da direção do olhar
+    function detectGazeDirection() {
+      // Captura o frame atual do vídeo e converte em escala de cinza
+      context.drawImage(videoElement, 0, 0, canvasWidth, canvasHeight);
+      const currentImageData = convertToGrayscale(context.getImageData(0, 0, canvasWidth, canvasHeight));
+
+      // Variáveis para controlar a semelhança da imagem
+      let bestMatch = Number.MAX_SAFE_INTEGER;
+      let bestMatchDirection = '';
+
+      // Comparar a imagem atual com as imagens de referência
+      Object.keys(referenceImages).forEach(direction => {
+        const referenceImageData = referenceImages[direction];
+        const difference = calculatePixelDifference(currentImageData, referenceImageData);
+
+        if (difference < bestMatch) {
+          bestMatch = difference;
+          bestMatchDirection = direction;
+        }
+      });
+
+      // Exibe o resultado com base na direção de olhar mais semelhante
+      if (bestMatchDirection) {
+        document.getElementById('resultado').innerText = 'Olhando para ' + bestMatchDirection;
+      } else {
+        document.getElementById('resultado').innerText = 'Não foi possível determinar a direção do olhar.';
+      }
+    }
+
+    // Função para converter uma imagem em escala de cinza
+    function convertToGrayscale(imageData) {
+      const grayscaleData = new Uint8ClampedArray(imageData.width * imageData.height);
+
+      for (let i = 0; i < imageData.data.length; i += 4) {
+        const r = imageData.data[i];
+        const g = imageData.data[i + 1];
+        const b = imageData.data[i + 2];
+
+        const average = (r + g + b) / 3;
+
+        grayscaleData[i / 4] = average;
+      }
+
+      return grayscaleData;
+    }
+
+    // Função para calcular a diferença entre duas imagens
+    function calculatePixelDifference(imageData1, imageData2) {
+      let difference = 0;
+
+      for (let i = 0; i < imageData1.length; i++) {
+        difference += Math.abs(imageData1[i] - imageData2[i]);
+      }
+
+      return difference;
+    }
+
+    // Configura a câmera
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        videoElement.srcObject = stream;
+        videoElement.play();
+      })
+      .catch(err => console.error(err));
+
+    // Intervalo para detecção do olhar
+    setInterval(detectGazeDirection, 1000);
+  </script>
+</body>
+</html>

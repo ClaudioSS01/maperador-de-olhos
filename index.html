@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Detecção de Olhar</title>
+  <style>
+    #videoElement, #canvasElement {
+      width: 100%;
+      height: auto;
+      display: none;
+    }
+
+    button{
+
+background-color: #4CAF50; 
+border: none; 
+color: white; 
+padding: 15px 32px; 
+text-align: center;
+ text-decoration: none; 
+display: inline-block; 
+font-size: 16px;
+    }
+
+
+
+    #esquerdaButton{
+      position: absolute;
+      top: 10vmin;
+      right: 10vmin;
+      width: 30vmin;
+    }
+
+
+    #direitaButton{
+      position: absolute;
+      top: 10vmin;
+      left: 10vmin;
+      width: 30vmin;
+    }
+
+
+
+    #startButton{
+      position: absolute;
+      top: 80vmin;
+      width: 90%;
+    }
+
+
+    #inputTextEsquerda{
+      position: absolute;
+      top: 20vmin;
+      right: 10vmin;
+      width: 30vmin;
+    }
+
+
+
+    #inputText{
+      position: absolute;
+      top: 20vmin;
+      left: 10vmin;
+      width: 30vmin;
+    }
+  </style>
+</head>
+<body>
+  <center>
+    <h1>
+      <div>Mapeador de olhos</div>
+      <br>
+  <div id="resultado">direção</div>
+  </h1>
+  </center>
+  <br>
+  <br>
+  <button id="esquerdaButton">treinar Valor abaixo</button>
+  <input type="text" id="inputTextEsquerda" />
+    
+  <script>
+
+function fale(texto) {
+    let msg = texto
+    
+    let speech = new SpeechSynthesisUtterance();
+    speech.lang = "pt-br";
+    
+    speech.text = msg;
+    speech.volume = 1;
+    speech.rate = 1;
+    speech.pitch = 1;
+    
+    window.speechSynthesis.speak(speech);
+}
+
+function falar(texto){
+    fale(texto)
+}
+
+    const inputEsquerda = document.getElementById('inputTextEsquerda');
+    
+    inputEsquerda.addEventListener('blur', function() {
+      const value = inputEsquerda.value;
+      localStorage.setItem('textoSalvoEsquerda', value);
+    });
+    
+    // Carregar o valor salvo do localStorage quando a página carregar
+    window.addEventListener('load', function() {
+      const savedValue = localStorage.getItem('textoSalvoEsquerda');
+      if (savedValue) {
+        inputEsquerda.value = savedValue;
+      }
+    });
+  </script>
+  <button id="direitaButton">treinar valor abaixo</button>
+  <input type="text" id="inputText" />
+    
+  <script>
+    const input = document.getElementById('inputText');
+    
+    input.addEventListener('blur', function() {
+      const value = input.value;
+      localStorage.setItem('textoSalvo', value);
+    });
+    
+    // Carregar o valor salvo do localStorage quando a página carregar
+    window.addEventListener('load', function() {
+      const savedValue = localStorage.getItem('textoSalvo');
+      if (savedValue) {
+        input.value = savedValue;
+      }
+
+      //responsavel por recarregar os valores treinado quando a pagina recarregar
+      const savedreferenceImageDataEsquerdaValue = localStorage.getItem('referenceImageDataEsquerda');
+      if (savedreferenceImageDataEsquerdaValue) {
+        referenceImageDataEsquerda = savedreferenceImageDataEsquerdaValue;
+      }
+
+      //responsavel por recarregar os valores treinado quando a pagina recarregar
+      const savedreferenceImageDataDireitaValue = localStorage.getItem('referenceImageDataDireita');
+      if (savedreferenceImageDataDireitaValue) {
+        referenceImageDataDireita = savedreferenceImageDataDireitaValue;
+      }
+   
+    });
+  </script>
+  <button id="startButton">Iniciar Detecção</button>
+  <video id="videoElement" autoplay></video>
+  <canvas id="canvasElement"></canvas>
+
+
+
+  <script>
+    var videoElement = document.getElementById('videoElement');
+    var canvasElement = document.getElementById('canvasElement');
+    var context = canvasElement.getContext('2d');
+    var canvasWidth = canvasElement.width;
+    var canvasHeight = canvasElement.height;
+    var referenceImageDataEsquerda;
+    var referenceImageDataDireita;
+
+    // Acesso à câmera
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(function(stream) {
+        videoElement.srcObject = stream;
+
+        // Event listener para o botão "Olhando para Esquerda"
+        var esquerdaButton = document.getElementById('esquerdaButton');
+        esquerdaButton.addEventListener('click', function() {
+          captureAndProcessImage('esquerda');
+        });
+
+        // Event listener para o botão "Olhando para Direita"
+        var direitaButton = document.getElementById('direitaButton');
+        direitaButton.addEventListener('click', function() {
+          captureAndProcessImage('direita');
+        });
+
+        // Event listener para o botão "Iniciar Detecção"
+        var startButton = document.getElementById('startButton');
+        startButton.addEventListener('click', function() {
+          // Inicia o loop de detecção a cada 5 segundos
+          setInterval(detectGazeDirection, 5000);
+        });
+
+        // Função para capturar a imagem atual da câmera e converter em escala de cinza
+        function captureAndProcessImage(direction) {
+          // Captura o frame atual do vídeo
+          context.drawImage(videoElement, 0, 0, canvasWidth, canvasHeight);
+          var imageData = context.getImageData(0, 0, canvasWidth, canvasHeight);
+
+          // Converter em escala de cinza
+          var grayscaleData = convertToGrayscale(imageData);
+
+
+          // Aqui você pode guardar os dados das imagens para referência posterior
+          if (direction === 'esquerda') {
+            // Salvar os dados da imagem processada para olhar para a esquerda
+            referenceImageDataEsquerda = grayscaleData;
+            //aqui salvamos o valor aprendido no local storage pra nao preciasr ficar mapeando toda hora
+            localStorage.setItem("referenceImageDataEsquerda",referenceImageDataEsquerda);
+            document.querySelector("#resultado").innerText = "Treinamento Concluido!"
+            setTimeout(()=>{
+              document.querySelector("#resultado").innerText = "...";
+            },2000)
+          } else if (direction === 'direita') {
+            // Salvar os dados da imagem processada para olhar para a direita
+            referenceImageDataDireita = grayscaleData;
+            //aqui salvamos o valor aprendido no local storage pra nao preciasr ficar mapeando toda hora
+            localStorage.setItem("referenceImageDataDireita",referenceImageDataDireita)
+            document.querySelector("#resultado").innerText = "Treinamento Concluido!"
+            setTimeout(()=>{
+              document.querySelector("#resultado").innerText = "...";
+            },2000)
+          }
+        }
+
+        // Função para a detecção da direção do olhar
+        function detectGazeDirection() {
+          // Captura o frame atual do vídeo e converte em escala de cinza
+          context.drawImage(videoElement, 0, 0, canvasWidth, canvasHeight);
+          var currentImageData = convertToGrayscale(context.getImageData(0, 0, canvasWidth, canvasHeight));
+
+          // Comparar a imagem atual com as imagens de referência
+          var diffEsquerda = calculatePixelDifference(currentImageData, referenceImageDataEsquerda);
+          var diffDireita = calculatePixelDifference(currentImageData, referenceImageDataDireita);
+
+          if (diffEsquerda < diffDireita) {
+            console.log('Olhando para a Esquerda');
+              let valorEsquerda = document.querySelector("#inputTextEsquerda").value;
+            document.querySelector("#resultado").innerText = valorEsquerda;
+            fale(valorEsquerda)
+          } else {
+            console.log('Olhando para a Direita');
+              let valorDireita = document.querySelector("#inputText").value;
+            document.querySelector("#resultado").innerText = valorDireita;
+            fale(valorDireita)
+          }
+        }
+
+     
+
+        // Função para converter uma imagem em escala de cinza
+        function convertToGrayscale(imageData) {
+          var grayscaleData = [];
+
+          for (var i = 0; i < imageData.data.length; i += 4) {
+            var red = imageData.data[i];
+            var green = imageData.data[i + 1];
+            var blue = imageData.data[i + 2];
+
+            // Calcular a média dos canais de cor para obter a escala de cinza
+            var gray = (red + green + blue) / 3;
+
+            grayscaleData.push(gray);
+          }
+
+          return grayscaleData;
+        }
+
+        // Função para calcular a diferença média de pixels entre duas imagens
+        function calculatePixelDifference(imageData1, imageData2) {
+          var diffSum = 0;
+
+          for (var i = 0; i < imageData1.length; i++) {
+            var pixel1 = imageData1[i];
+            var pixel2 = imageData2[i];
+
+            var diff = Math.abs(pixel1 - pixel2);
+            diffSum += diff;
+          }
+
+          var meanDiff = diffSum / imageData1.length;
+
+          return meanDiff / 255; // Normalizar o valor entre 0 e 1
+        }
+
+
+      })
+      .catch(function(error) {
+        console.error('Erro ao acessar a câmera:', error);
+      });
+  </script>
+</body>
+</html>
